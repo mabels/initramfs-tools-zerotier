@@ -1,0 +1,44 @@
+#!/bin/sh
+
+PREREQ=""
+
+prereqs() {
+    echo "$PREREQ"
+}
+
+case "$1" in
+    prereqs)
+        prereqs
+        exit 0
+    ;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+zerotier_warn() {
+    echo "zerotier: WARNING:" "$@" >&2
+}
+
+copy_exec /usr/sbin/zerotier-one /sbin
+ln -s /sbin/zerotier-one $DESTDIR/sbin/zerotier-cli
+ln -s /sbin/zerotier-one $DESTDIR/sbin/zerotier-idtool
+
+copy_exec $(readlink -f /usr/sbin/iptables) /sbin/iptables
+# update-alternatives --set iptables /usr/sbin/iptables-legacy
+# update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+# update-alternatives --set arptables /usr/sbin/arptables-legacy
+# update-alternatives --set ebtables /usr/sbin/ebtables-legacy
+copy_modules_dir kernel/net/ipv6/netfilter
+copy_modules_dir kernel/net/ipv4/netfilter
+copy_modules_dir kernel/net/netfilter
+
+for so in $(ldconfig -p | sed -nr 's/^\s*libnss_files\.so\.[0-9]+\s.*=>\s*//p'); do
+    copy_exec "$so"
+done
+
+mkdir -p $DESTDIR/var/lib/zerotier-one
+cp -pr /var/lib/zerotier-one $DESTDIR/var/lib
+
+cp -prL /etc/ssl $DESTDIR/etc
+
+
